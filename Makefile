@@ -1,3 +1,6 @@
+basic:
+	iverilog basic.v
+
 test:
 	vvp a.out
 	gtkwave wave.vcd
