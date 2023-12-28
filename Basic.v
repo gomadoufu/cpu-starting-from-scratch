@@ -11,24 +11,9 @@ module Basic;
     reg r_x;
     // --- おまじないここまで ---
 
-    wire w_c;
-    wire w_s;
+    wire [1:0] w_add;
 
-    // ここに全加算器を記述
-
-    wire w_c_ab;
-    wire w_s_ab;
-
-    //半加算器
-    assign w_c_ab = r_a & r_b;
-    assign w_s_ab = r_a ^ r_b;
-
-    wire w_c_abx;
-
-    assign w_c_abx = w_s_ab & r_x;
-    assign w_s = w_s_ab ^ r_x;
-
-    assign w_c = w_c_ab | w_c_abx;
+    assign w_add = r_a + r_b + r_x;
 
     // --- おまじないここから ---
     initial begin
