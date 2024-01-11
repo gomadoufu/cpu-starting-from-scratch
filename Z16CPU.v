@@ -14,20 +14,25 @@ module Z16CPU(
     wire w_rd_wen;
     wire w_mem_wen;
     wire [3:0] w_alu_ctrl;
+    wire [3:0] w_opcode;
 
     wire [15:0] w_rs1_data; // RS1のデータ
     wire [15:0] w_rs2_data; // RS2のデータ
+    wire [15:0] w_rd_data;
 
+    wire [15:0] w_data_b;
     wire [15:0] w_alu_data; // ALUの演算結果
     wire [15:0] w_mem_rdata; // メモリからの読み出しデータ
 
-
     always @(posedge i_clk) begin
         if(i_rst) begin
-            // リセット
-            r_pc <= 16'h0000;
+            r_pc  <= 16'h0000;
+        end else if(w_opcode == 4'hC) begin // JAL
+            r_pc  <= w_alu_data;
+        end else if(w_opcode == 4'hD) begin // JRL
+            r_pc  <= r_pc + w_alu_data;
         end else begin
-            r_pc <= r_pc + 16'h0002;
+            r_pc  <= r_pc + 16'h0002;
         end
     end
 
@@ -39,6 +44,7 @@ module Z16CPU(
 
     Z16Decoder Decoder(
                    .i_instr    (w_instr    ),
+                   .o_opcode   (w_opcode),
                    .o_rd_addr  (w_rd_addr  ),
                    .o_rs1_addr (w_rs1_addr ),
                    .o_rs2_addr (w_rs2_addr),
@@ -48,6 +54,23 @@ module Z16CPU(
                    .o_alu_ctrl (w_alu_ctrl )
                );
 
+    assign w_rd_data = select_rd_data(w_opcode, w_mem_rdata, r_pc, w_alu_data);
+
+    function [15:0] select_rd_data;
+        input   [3:0]   i_opcode;
+        input   [15:0]  i_mem_rdata;
+        input   [15:0]  i_pc;
+        input   [15:0]  i_alu_data;
+        begin
+            case(i_opcode)
+                4'hA  : select_rd_data    = i_mem_rdata;
+                4'hC  : select_rd_data    = i_pc + 16'h0002;
+                4'hD  : select_rd_data    = i_pc + 16'h0002;
+                default : select_rd_data  = i_alu_data;
+            endcase
+        end
+    endfunction
+
     // レジスタファイル
     Z16RegisterFile RegFile(
                         .i_clk      (i_clk      ),
@@ -55,15 +78,16 @@ module Z16CPU(
                         .o_rs1_data (w_rs1_data ), // RS1のデータを出力
                         .i_rs2_addr (w_rs2_addr),
                         .o_rs2_data (w_rs2_data),
-                        .i_rd_data  (w_mem_rdata),
+                        .i_rd_data  (w_rd_data),
                         .i_rd_addr  (w_rd_addr),
                         .i_rd_wen   (w_rd_wen)
                     );
 
+    assign w_data_b = (w_opcode <= 8'h8) ? w_rs2_data : w_imm;
     // ALU
     Z16ALU ALU(
                .i_data_a   (w_rs1_data ),  // RS1のデータを入力
-               .i_data_b   (w_imm      ),  // 即値を入力
+               .i_data_b   (w_data_b   ),  // 即値を入力
                .i_ctrl     (w_alu_ctrl ),  // ALUの制御信号を入力
                .o_data     (w_alu_data )   // ALUの演算結果を出力
            );
